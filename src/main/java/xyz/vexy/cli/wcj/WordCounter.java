@@ -81,6 +81,7 @@ public class WordCounter {
   public static Map<String, Integer> countLinesInDir(
       final File file,
       final Pattern filter,
+      final Pattern ignore,
       final Boolean countBlank,
       Map<String, Integer> lineCounts) {
     if (!file.isDirectory()) {
@@ -97,13 +98,14 @@ public class WordCounter {
       }
 
       if (thisFile.isDirectory()) {
-        lineCounts = countLinesInDir(thisFile, filter, countBlank, lineCounts);
+        lineCounts = countLinesInDir(thisFile, filter, ignore, countBlank, lineCounts);
         continue;
       }
 
-      Matcher matcher = filter.matcher(thisFile.getPath());
+      Matcher fMatcher = filter.matcher(thisFile.getPath());
+      Matcher iMatcher = ignore.matcher(thisFile.getPath());
 
-      if (matcher.matches()) {
+      if (fMatcher.matches() && !iMatcher.matches()) {
         lineCounts.put(thisFile.getPath(), countLinesInFile(thisFile, countBlank));
       }
     }
@@ -114,7 +116,8 @@ public class WordCounter {
   public static Map<String, Integer> countLinesInDir(
       final File file,
       final Pattern filter,
+      final Pattern ignore,
       final Boolean countBlank) {
-    return countLinesInDir(file, filter, countBlank, new HashMap<>());
+    return countLinesInDir(file, filter, ignore, countBlank, new HashMap<>());
   }
 }

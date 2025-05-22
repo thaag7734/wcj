@@ -13,29 +13,38 @@ public class Main {
     }
 
     String filter = ".+";
+    String ignore = null;
     Boolean countBlank = false;
     Boolean recurse = false;
-    Boolean regexSet = false;
+    Boolean filterSet = false;
 
     for (int i = 1; i < args.length; i++) {
       switch (args[i]) {
-        case "-r":
-        case "--regex":
+        case "-m":
+        case "--match":
           if (args.length <= i + 1) {
-            System.out.println("[ERROR] Option --regex requires an argument");
+            System.out.println("[ERROR] Option --match requires an argument");
             return;
           }
 
-          regexSet = true;
-          filter = args[i + 1];
-          i++;
+          filterSet = true;
+          filter = args[++i];
+          break;
+        case "-i":
+        case "--ignore":
+          if (args.length <= i + 1) {
+            System.out.println("[ERROR] Option --ignore requires an argument");
+            return;
+          }
+
+          ignore = args[++i];
           break;
         case "-b":
         case "--count-blank":
           countBlank = true;
           break;
         case "-R":
-        case "--recursive":
+        case "--recurse":
           recurse = true;
           break;
         case "-h":
@@ -49,25 +58,41 @@ public class Main {
       }
     }
 
-    if (regexSet && !recurse) {
+    if (filterSet && !recurse) {
       System.out.println(
-          "[ERROR] Option --regex requires option --recursive to be set");
+          "[ERROR] Option --regex requires option --recurse to be set");
       return;
     }
 
-    Pattern pattern;
+    if (ignore != null && !recurse) {
+      System.out.println(
+          "[ERROR] Option --ignore requires option --recurse to be set");
+      return;
+    }
+
+    Pattern mPattern;
+    Pattern iPattern;
 
     try {
-      pattern = Pattern.compile(filter);
+      mPattern = Pattern.compile(filter);
     } catch (PatternSyntaxException e) {
-      System.out.println("[ERROR] Invalid regex: " + e.getMessage());
+      System.out.println("[ERROR] Invalid regex passed to option --match: " + e.getMessage());
+      return;
+    }
+
+    try {
+      // "a^" is an unmatchable string, so we default to it so we
+      // can ignore nothing by default
+      iPattern = Pattern.compile(ignore != null ? ignore : "a^");
+    } catch (PatternSyntaxException e) {
+      System.out.println("[ERROR] Invalid regex passed to option --ignore: " + e.getMessage());
       return;
     }
 
     File file = new File(args[0]);
 
     if (recurse) {
-      Map<String, Integer> counts = WordCounter.countLinesInDir(file, pattern, countBlank);
+      Map<String, Integer> counts = WordCounter.countLinesInDir(file, mPattern, iPattern, countBlank);
 
       int total = 0;
       int fileCount = 0;
@@ -108,9 +133,11 @@ public class Main {
     System.out.println("Options:");
     System.out
         .println(
-            "  -R | --recursive..............Treat <file> as a directory and recursively count all its descendants");
+            "  -R | --recurse..............Treat <file> as a directory and recursively count all its descendants");
     System.out.println(
-        "  -r | --regex [pattern]........Only count in files whose names match pattern (requires that --recursive is set)");
+        "  -m | --match [pattern]........Only count in files whose names match pattern (requires that --recurse is set)");
+    System.out.println(
+        "  -i | --ignore [pattern]........Skip counting in files whose names match pattern (requires that --recurse is set)");
     System.out.println("  -b | --count-blank............Include blank lines in the count");
     System.out.println("  -h | --help...................Show this message");
   }
